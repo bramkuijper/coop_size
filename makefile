@@ -1,4 +1,4 @@
-EXE=coop_size.eexe
+EXE=coop_size.exe
 CPP=individual.cpp simulation.cpp main.cpp 
 HPP=individual.hpp simulation.hpp parameters.hpp 
 CXX=g++
