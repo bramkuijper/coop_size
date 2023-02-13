@@ -3,9 +3,10 @@
 #include <cassert>
 #include <random>
 
+// definition of the Simulation class constructor
 Simulation::Simulation(Parameters const &params) :
     rd{}
-    ,seed{rd()}
+    ,seed{rd()} // which list of random numbers to pick?
     ,rng_r{seed} // initialize the random number generator with a random_device
     ,uniform(0.0,1.0) // initialize a uniform (0,1) distribution
     ,parms{params} // initialize parameters
@@ -225,14 +226,18 @@ double Simulation::size_dependent_survival(double const size)
 
 void Simulation::adult_survival()
 {
+    // reset the counter that tracks the number of surviving individuals
+    // just for the sake of statistics
     nsurvive = 0;
 
+    // auxiliary variable to store a random uniform number
     double rand_unif;
 
     for (std::vector<Individual>::iterator pop_iter = pop.begin();
             pop_iter != pop.end();
             ++pop_iter)
     {
+        // draw a random number
         rand_unif = uniform(rng_r);
 
         // individual dies
@@ -241,7 +246,7 @@ void Simulation::adult_survival()
             // note postfix decrement of pop_iter
             pop.erase(pop_iter--);
         }
-    }
+    } // end for std::vector Individual
 
     nsurvive = pop.size();
 

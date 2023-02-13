@@ -33,7 +33,8 @@ class Simulation
 
         // the current environmental state
         bool envt;
-        
+
+        // declaration of the Simulation class constructor
         Simulation(Parameters const &params);
 
         // run the thing
