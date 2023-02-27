@@ -391,6 +391,9 @@ void Simulation::write_parameters()
         << "N;" << parms.N << std::endl
         << "M[0];" << parms.M[0] << std::endl
         << "M[1];" << parms.M[1] << std::endl
+        << "init_m;" << parms.init_m << std::endl
+        << "init_mb;" << parms.init_mb << std::endl
+        << "init_bh;" << parms.init_bh << std::endl
         << "mu_m;" << parms.mu_m << std::endl
         << "mu_bh;" << parms.mu_bh << std::endl
         << "mu_mb;" << parms.mu_mb << std::endl
