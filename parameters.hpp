@@ -31,7 +31,10 @@ struct Parameters
     double mu_bh = 0.01; // mutation rate for the bet-hedging locus
     double mu_mb = 0.01; // mutation rate for the plasticity
     double sdmu = 0.02; // standard deviation in mutation rates
-    unsigned int N = 5000;
+    unsigned int npp = 5;
+    unsigned int npatches = 5;
+
+    double d = 0.3;
 
     // parental resources
     double M[2] = {20,50};

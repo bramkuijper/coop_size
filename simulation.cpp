@@ -1,7 +1,8 @@
-#include "simulation.hpp"
 #include <cmath>
 #include <cassert>
 #include <random>
+#include "patch.hpp"
+#include "simulation.hpp"
 
 // definition of the Simulation class constructor
 Simulation::Simulation(Parameters const &params) :
@@ -12,7 +13,7 @@ Simulation::Simulation(Parameters const &params) :
     ,parms{params} // initialize parameters
     ,envt{false} // initialize the environment
     ,data_file{params.base_name.c_str()} // initialize the data
-    ,pop(params.N, Individual(params.init_m, params.init_m, params.init_mb, params.init_bh)) // initialize the population
+    ,pop(params.npatches, Patch(params)) // initialize the population
 {}
 
 // run the actual simulation then
@@ -55,15 +56,25 @@ void Simulation::calculate_fitness()
     double w = 0.0;
     double varw = 0.0;
 
-    for (std::vector<Individual>::iterator pop_iter = pop.begin();
+    int nbreeders = 0;
+
+    for (std::vector<Patch>::iterator pop_iter = pop.begin();
             pop_iter != pop.end();
             ++pop_iter)
     {
-        w += pop_iter->w;
-        varw += pop_iter->w * pop_iter->w;
+        for (std::vector <Individual>::iterator ind_iter = 
+                pop_iter->breeders.begin();
+                ind_iter != pop_iter->breeders.end();
+                ++ind_iter)
+        {
+            w += ind_iter->w;
+            varw += ind_iter->w * pop_iter->w;
+
+            nbreeders += pop_iter->breeders.size();
+        }
     }
 
-    double meanw = w / pop.size();
+    double meanw = w / nbreeders();
 
     wvec.push_back(meanw);
     varwvec.push_back(varw/pop.size() - meanw * meanw);
@@ -233,7 +244,7 @@ void Simulation::adult_survival()
     // auxiliary variable to store a random uniform number
     double rand_unif;
 
-    for (std::vector<Individual>::iterator pop_iter = pop.begin();
+    for (std::vector<Patch>::iterator pop_iter = pop.begin();
             pop_iter != pop.end();
             ++pop_iter)
     {

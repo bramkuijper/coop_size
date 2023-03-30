@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <random>
+#include "patch.hpp"
 #include "individual.hpp"
 #include "parameters.hpp"
 
@@ -26,8 +27,7 @@ class Simulation
         unsigned int nsurvive = 0;
 
     public:
-        std::vector <Individual> pop;
-        std::vector <Individual> juveniles;
+        std::vector <Patch> pop;
         std::vector <double> wvec;
         std::vector <double> varwvec;
 
