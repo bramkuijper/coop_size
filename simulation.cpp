@@ -58,15 +58,18 @@ void Simulation::calculate_fitness()
 
     int nbreeders = 0;
 
+    // loop over all patches
     for (std::vector<Patch>::iterator pop_iter = pop.begin();
             pop_iter != pop.end();
             ++pop_iter)
     {
+        // loop over breeders within each patch
         for (std::vector <Individual>::iterator ind_iter = 
                 pop_iter->breeders.begin();
                 ind_iter != pop_iter->breeders.end();
                 ++ind_iter)
         {
+            // calculate fitness
             w += ind_iter->w;
             varw += ind_iter->w * pop_iter->w;
 
@@ -104,45 +107,57 @@ void Simulation::write_data()
 
     int n_sample = 10;
 
-    for (std::vector<Individual>::iterator pop_iter = pop.begin();
+    int total_n = 0;
+
+    // loop over all patches
+    for (std::vector <Patch>::iterator pop_iter = pop.begin();
             pop_iter != pop.end();
             ++pop_iter)
     {
-        // get traits
-        m = pop_iter->m[0] + pop_iter->m[1];
-        mb = pop_iter->mb[0] + pop_iter->mb[1];
-        bh = pop_iter->bh[0] + pop_iter->bh[1];
+        total_n += pop_iter->breeders.size();
 
-        mean_m += m;
-        var_m += m*m;
-
-        mean_mb += mb;
-        var_mb += mb*mb;
-
-        mean_bh += bh;
-        var_bh += bh*bh;
-
-        for (int sample_idx = 0; sample_idx < n_sample; ++sample_idx)
+        // loop over breeders within a patch
+        for (std::vector <Individual>::iterator ind_iter = 
+                pop_iter->breeders.begin();
+                    ind_iter != pop_iter->breeders.end();
+                    ++ind_iter)
         {
-            for (int envt_idx = 0; envt_idx < 2; ++envt_idx)
-            {
-                size = m + mb * envt_idx + bh * normal(rng_r);
+            // get traits
+            m = ind_iter->m[0] + ind_iter->m[1];
+            mb = ind_iter->mb[0] + ind_iter->mb[1];
+            bh = ind_iter->bh[0] + ind_iter->bh[1];
 
-                mean_size[envt_idx] += size;
-                var_size[envt_idx] += size * size;
+            mean_m += m;
+            var_m += m*m;
+
+            mean_mb += mb;
+            var_mb += mb*mb;
+
+            mean_bh += bh;
+            var_bh += bh*bh;
+
+            for (int sample_idx = 0; sample_idx < n_sample; ++sample_idx)
+            {
+                for (int envt_idx = 0; envt_idx < 2; ++envt_idx)
+                {
+                    size = m + mb * envt_idx + bh * normal(rng_r);
+
+                    mean_size[envt_idx] += size;
+                    var_size[envt_idx] += size * size;
+                }
             }
-        }
-    } // end for
+        } // end for
+    }
 
     data_file << time_step << ";" << envt << ";";
 
     for (int envt_idx = 0; envt_idx < 2; ++envt_idx)
     {
-        mean_size[envt_idx] /= pop.size() * n_sample;
+        mean_size[envt_idx] /= total_n * n_sample;
 
         data_file << mean_size[envt_idx] << ";";
     
-        var_size[envt_idx] = var_size[envt_idx] / (pop.size() * n_sample) - 
+        var_size[envt_idx] = var_size[envt_idx] / (total_n * n_sample) - 
             mean_size[envt_idx] * mean_size[envt_idx];
         
         data_file << var_size[envt_idx] << ";";
@@ -174,14 +189,14 @@ void Simulation::write_data()
     double wmean = sumw/((int)wvec.size() - idx_start);
     double varw = ssw/((int)wvec.size() - idx_start) - wmean * wmean;
 
-    mean_m/=pop.size();
-    mean_mb/=pop.size();
-    mean_bh/=pop.size();
+    mean_m/=total_n;
+    mean_mb/=total_n;
+    mean_bh/=total_n;
 
 
-    var_m= var_m/pop.size() - mean_m * mean_m;
-    var_mb= var_mb/pop.size() - mean_mb * mean_mb;
-    var_bh = var_bh/pop.size() - mean_bh * mean_bh;
+    var_m= var_m/total_n - mean_m * mean_m;
+    var_mb= var_mb/total_n - mean_mb * mean_mb;
+    var_bh = var_bh/total_ - mean_bh * mean_bh;
 
     data_file << mean_m << ";";
     data_file << var_m << ";";
@@ -244,25 +259,30 @@ void Simulation::adult_survival()
     // auxiliary variable to store a random uniform number
     double rand_unif;
 
-    for (std::vector<Patch>::iterator pop_iter = pop.begin();
-            pop_iter != pop.end();
-            ++pop_iter)
+    for (std::vector<Patch>::iterator patch_iter = pop.begin();
+            patch_iter != pop.end();
+            ++patch_iter)
     {
-        // draw a random number
-        rand_unif = uniform(rng_r);
-
-        // individual dies
-        if (rand_unif > parms.adult_survival)
+        for (std::vector<Individual>::iterator breeder_iter = patch_iter->breeders.begin();
+                breeder_iter != patch_iter->breeders.end();
+                ++breeder_iter)
         {
-            // note postfix decrement of pop_iter
-            pop.erase(pop_iter--);
+            // draw a random number
+            rand_unif = uniform(rng_r);
+
+            // individual dies
+            if (rand_unif > parms.adult_survival)
+            {
+                // note postfix decrement of patch_iter
+                patch_iter->breeders.erase(breeder_iter--);
+            }
         }
+
+        nsurvive += patch_iter->breeders.size();
     } // end for std::vector Individual
 
-    nsurvive = pop.size();
-
     // population extinct??
-    if (pop.size() < 1)
+    if (nsurvive < 1)
     {
         write_parameters();
         exit(1);
@@ -271,21 +291,40 @@ void Simulation::adult_survival()
 
 void Simulation::envt_change()
 {
-    if (uniform(rng_r) < parms.sigma[envt])
+    bool change = false;
+
+    if (parms.spatially_homogenous)
     {
-        envt = !envt;
+        // look at environment of first patch
+        if (uniform(rng_r) < parms.sigma[pop[0].environment_is_bad])
+        {
+            // change envts in all patches
+            for (std::vector<Patch>::iterator patch_iter = pop.begin();
+                    patch_iter != pop.end();
+                    ++patch_iter)
+            {
+                patch_iter->environment_is_bad = !patch_iter->environment_is_bad;
+            }
+        }
+    }
+    else
+    {
+        // change envts in all patches
+        for (std::vector<Patch>::iterator patch_iter = pop.begin();
+                patch_iter != pop.end();
+                ++patch_iter)
+        {
+            if (uniform(rng_r) < parms.sigma[patch_iter->environment_is_bad])
+            {
+                patch_iter->environment_is_bad = !patch_iter->environment_is_bad;
+            }
+        }
     }
 }
 
 void Simulation::replace()
 {
-    if (juveniles.size() < 1)
-    {
-        return;
-    }
-
     int n_gap = (int)parms.N - (int)pop.size();
-
 
     // random sample a whole bunch 
     std::uniform_int_distribution<int> juv_sampler(0, (int)juveniles.size() - 1);

@@ -59,6 +59,10 @@ struct Parameters
     
     // the prefix of the file name
     std::string base_name = "sim_clutch_size";
+
+    // whether all environments change at the same time
+    bool spatially_homogenous = false;
+
 }; // end of the parameter struct definition
 
 #endif
