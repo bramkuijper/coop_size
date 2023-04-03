@@ -34,12 +34,15 @@ struct Parameters
     unsigned int npp = 5;
     unsigned int npatches = 5;
 
+    // dispersal probability
     double d = 0.3;
 
     // parental resources
     double M[2] = {20,50};
 
+    // whether clutch size is a fixed number
     bool fix_clutch_size = false;
+
     int fixed_clutch_size = 2;
 
     // minimum size that warrants survival
@@ -55,7 +58,7 @@ struct Parameters
 
     double baseline_survival = 0.1;
 
-    unsigned int output_interval = 50;
+    unsigned int output_interval = 1;
     
     // the prefix of the file name
     std::string base_name = "sim_clutch_size";
@@ -63,6 +66,10 @@ struct Parameters
     // whether all environments change at the same time
     bool spatially_homogenous = false;
 
+    // if no juvs born on current patch, try to sample from
+    // other patches. If one has to sample more than nsample_extinct
+    // times then quit the simulation
+    int nsample_extinct = 100;
 }; // end of the parameter struct definition
 
 #endif

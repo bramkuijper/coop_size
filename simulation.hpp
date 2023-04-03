@@ -17,7 +17,9 @@ class Simulation
         std::ofstream data_file;
 
         std::uniform_real_distribution<double> uniform;
+        std::uniform_int_distribution<int> patch_sampler;
         std::normal_distribution<double> normal;
+
         long unsigned time_step;
         std::random_device rd;
         unsigned int seed;
@@ -60,6 +62,8 @@ class Simulation
         void write_data();
 
         void calculate_fitness();
+
+        void clear_juveniles();
 };
 
 #endif

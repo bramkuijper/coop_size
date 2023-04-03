@@ -10,6 +10,7 @@ Simulation::Simulation(Parameters const &params) :
     ,seed{rd()} // which list of random numbers to pick?
     ,rng_r{seed} // initialize the random number generator with a random_device
     ,uniform(0.0,1.0) // initialize a uniform (0,1) distribution
+    ,patch_sampler(0, params.npatches - 1) // initialize a uniform (0,1) distribution
     ,parms{params} // initialize parameters
     ,envt{false} // initialize the environment
     ,data_file{params.base_name.c_str()} // initialize the data
@@ -27,9 +28,6 @@ void Simulation::run()
             time_step < parms.max_time;
             ++time_step)
     {
-        // have adults survive
-        adult_survival();
-
         // survivors produce offspring
         produce_offspring();
 
@@ -38,6 +36,9 @@ void Simulation::run()
 
         // calculate fitness
         calculate_fitness();
+
+        // have adults survive
+        adult_survival();
 
         // have offspring fill vacant breeding spots
         replace();
@@ -71,13 +72,13 @@ void Simulation::calculate_fitness()
         {
             // calculate fitness
             w += ind_iter->w;
-            varw += ind_iter->w * pop_iter->w;
+            varw += ind_iter->w * ind_iter->w;
 
             nbreeders += pop_iter->breeders.size();
         }
     }
 
-    double meanw = w / nbreeders();
+    double meanw = w / nbreeders;
 
     wvec.push_back(meanw);
     varwvec.push_back(varw/pop.size() - meanw * meanw);
@@ -93,9 +94,6 @@ void Simulation::write_data()
     double mean_mb = 0.0;
     double var_mb = 0.0;
 
-    double mean_w = 0.0;
-    double var_w = 0.0;
-
     // mean and variance in the bet-hedging trait
     double mean_bh = 0.0;
     double var_bh = 0.0;
@@ -109,12 +107,15 @@ void Simulation::write_data()
 
     int total_n = 0;
 
+    int njuveniles = 0;
+
     // loop over all patches
     for (std::vector <Patch>::iterator pop_iter = pop.begin();
             pop_iter != pop.end();
             ++pop_iter)
     {
         total_n += pop_iter->breeders.size();
+        njuveniles += pop_iter->juveniles.size();
 
         // loop over breeders within a patch
         for (std::vector <Individual>::iterator ind_iter = 
@@ -196,7 +197,7 @@ void Simulation::write_data()
 
     var_m= var_m/total_n - mean_m * mean_m;
     var_mb= var_mb/total_n - mean_mb * mean_mb;
-    var_bh = var_bh/total_ - mean_bh * mean_bh;
+    var_bh = var_bh/total_n - mean_bh * mean_bh;
 
     data_file << mean_m << ";";
     data_file << var_m << ";";
@@ -207,8 +208,8 @@ void Simulation::write_data()
     data_file << mean_bh << ";";
     data_file << var_bh << ";";
 
-    data_file << (double)juveniles.size() << ";";
-    data_file << (double)nsurvive/parms.N << ";";
+    data_file << (double)njuveniles/(parms.npatches * parms.npp) << ";";
+    data_file << (double)nsurvive/(parms.npatches * parms.npp) << ";";
 
     data_file << wmean << ";";
     data_file << varw << ";";
@@ -280,22 +281,15 @@ void Simulation::adult_survival()
 
         nsurvive += patch_iter->breeders.size();
     } // end for std::vector Individual
-
-    // population extinct??
-    if (nsurvive < 1)
-    {
-        write_parameters();
-        exit(1);
-    }
 } // end void Simulation::survive()
 
 void Simulation::envt_change()
 {
-    bool change = false;
-
+    // option 1: all environments change at the same time
     if (parms.spatially_homogenous)
     {
-        // look at environment of first patch
+        // assess environment of first patch: if that changes
+        // all changes
         if (uniform(rng_r) < parms.sigma[pop[0].environment_is_bad])
         {
             // change envts in all patches
@@ -307,9 +301,8 @@ void Simulation::envt_change()
             }
         }
     }
-    else
+    else // change envts in all patches independently
     {
-        // change envts in all patches
         for (std::vector<Patch>::iterator patch_iter = pop.begin();
                 patch_iter != pop.end();
                 ++patch_iter)
@@ -320,22 +313,8 @@ void Simulation::envt_change()
             }
         }
     }
-}
+} // end void Simulation::envt_change()
 
-void Simulation::replace()
-{
-    int n_gap = (int)parms.N - (int)pop.size();
-
-    // random sample a whole bunch 
-    std::uniform_int_distribution<int> juv_sampler(0, (int)juveniles.size() - 1);
-
-    for (int gap_idx = 0; gap_idx < n_gap; ++gap_idx)
-    {
-        pop.push_back(juveniles[juv_sampler(rng_r)]);
-    }
-
-    assert(pop.size() == parms.N);
-} // end void Simulation::replace
 
 // survive kin competition
 double Simulation::survive_kin_competition(double const n)
@@ -343,93 +322,176 @@ double Simulation::survive_kin_competition(double const n)
     return(1.0 - parms.kin_comp * n/parms.nmax);
 }
 
-// replace dead individuals with new ones
-// it seems so easy: just make a fitness distribution
-// but due to within individual variation in offspring size this is 
-// not necessarily straightforward
+void Simulation::clear_juveniles()
+{
+    // make a fitness distribution
+    for (std::vector<Patch>::iterator patch_iter = pop.begin();
+            patch_iter != pop.end();
+            ++patch_iter)
+    {
+        patch_iter->juveniles.clear();
+    }
+}
+
+void Simulation::replace()
+{
+    int patch_origin;
+    int random_juv;
+
+    for (int patch_idx = 0; patch_idx < parms.npatches; ++patch_idx)
+    {
+        int gap = parms.npp - pop[patch_idx].breeders.size();
+
+        assert(gap >= 0);
+
+        patch_origin = patch_idx;
+
+        // uh oh, patch extinct - try to find another patch 
+        // that still may have juvs
+        if (pop[patch_origin].juveniles.size() == 0)
+        {
+            for (int sample_attempt = 0; 
+                    sample_attempt < parms.nsample_extinct; ++sample_attempt)
+            {
+                patch_origin = patch_sampler(rng_r);
+
+                if (pop[patch_origin].juveniles.size() > 0)
+                {
+                    break;
+                }
+            }
+                
+            if (pop[patch_origin].juveniles.size() == 0)
+            {
+                // population extinct
+                write_parameters();
+                exit(0);
+            }
+        }
+
+        std::uniform_int_distribution<int> 
+            juv_sampler(0,pop[patch_origin].juveniles.size() - 1);
+
+        for (int new_breeder_idx = 0; new_breeder_idx < gap; ++new_breeder_idx)
+        {
+            random_juv = juv_sampler(rng_r);
+
+            pop[patch_idx].breeders.push_back(
+                    pop[patch_origin].juveniles[random_juv]);
+        }
+
+        assert(pop[patch_idx].breeders.size() == parms.npp);
+    }
+}
+
 void Simulation::produce_offspring()
 {
-    juveniles.clear();
+    clear_juveniles();
+
+    // auxiliary variables
+    //
+    // to store current clutch that is produced by parent
     std::vector<double> current_clutch;
 
     double resources, resources_per_offspring;
 
     double m, plast, bh;
 
-    size_t clutch;
-    
     // make a fitness distribution
-    for (std::vector<Individual>::iterator pop_iter = pop.begin();
-            pop_iter != pop.end();
-            ++pop_iter)
+    for (std::vector<Patch>::iterator patch_iter = pop.begin();
+            patch_iter != pop.end();
+            ++patch_iter)
     {
-        current_clutch.clear();
-        resources = parms.M[envt];
-
-        m = pop_iter->m[0] + pop_iter->m[1];
-        plast = (pop_iter->mb[0] + pop_iter->mb[1]) * envt;
-        bh = pop_iter->bh[0] + pop_iter->bh[1];
-
-        
-        while(true)
+        for (std::vector<Individual>::iterator breeder_iter = 
+                patch_iter->breeders.begin();
+                breeder_iter != patch_iter->breeders.end();
+                ++breeder_iter)
         {
-            if (parms.fix_clutch_size && current_clutch.size() >= parms.fixed_clutch_size)
+            current_clutch.clear();
+            resources = parms.M[patch_iter->environment_is_bad];
+
+            // baseline offspring size value
+            m = breeder_iter->m[0] + breeder_iter->m[1];
+
+            // contribution due to plasticity
+            plast = (breeder_iter->mb[0] + breeder_iter->mb[1]) * 
+                patch_iter->environment_is_bad;
+
+            // contribution due to bet-hedging
+            plast = (breeder_iter->mb[0] + breeder_iter->mb[1]) * patch_iter->environment_is_bad;
+
+            bh = breeder_iter->bh[0] + breeder_iter->bh[1];
+
+            while(true)
             {
-                break;
-            }
-
-            resources_per_offspring = m + plast + bh * normal(rng_r);
-
-            if (resources_per_offspring < 0)
-            {
-                resources_per_offspring = 0.0; 
-            }
-
-
-            // if Mremainder is too little to produce another offspring with
-            // egg-based investment m_i (i.e., Mremainder < m_i)
-            // another offspring will only be produced with a probability
-            // Mremainder/m_i
-            if (resources_per_offspring > resources)
-            { 
-                // some resources left to produce offspring
-                if (uniform(rng_r) < resources/resources_per_offspring)
+                if (parms.fix_clutch_size && current_clutch.size() >= parms.fixed_clutch_size)
                 {
-                    current_clutch.push_back(resources_per_offspring);
+                    break;
                 }
 
-                // either way: if one last offspring is still being
-                // produced or not, after this it is game over.
-                break;
-            }
-            else
+                resources_per_offspring = m + plast + bh * normal(rng_r);
+
+                if (resources_per_offspring < 0)
+                {
+                    resources_per_offspring = 0.0; 
+                }
+
+
+                // if Mremainder is too little to produce another offspring with
+                // egg-based investment m_i (i.e., Mremainder < m_i)
+                // another offspring will only be produced with a probability
+                // Mremainder/m_i
+                if (resources_per_offspring > resources)
+                { 
+                    // some resources left to produce offspring
+                    if (uniform(rng_r) < resources/resources_per_offspring)
+                    {
+                        current_clutch.push_back(resources_per_offspring);
+                    }
+
+                    // either way: if one last offspring is still being
+                    // produced or not, after this it is game over.
+                    break;
+                }
+                else
+                {
+                    current_clutch.push_back(resources_per_offspring);
+
+                    // update resources
+                    resources -= resources_per_offspring;
+                }
+            } // end while true
+
+            for (std::vector<double>::iterator clutch_iter = current_clutch.begin();
+                    clutch_iter != current_clutch.end();
+                    ++clutch_iter)
             {
-                current_clutch.push_back(resources_per_offspring);
+                // individual survives kin comp
+                if (uniform(rng_r) < size_dependent_survival(*clutch_iter) *
+                        survive_kin_competition(current_clutch.size()))
+                {
+                    Individual offspring(*breeder_iter);
+                    offspring.mutate(parms, rng_r);
+                    offspring.size = *clutch_iter;
+                    offspring.w = 0;
 
-                // update resources
-                resources -= resources_per_offspring;
+                    // see whether offspring disperse or not
+                    if (uniform(rng_r) < parms.d)
+                    {
+                        int random_patch = patch_sampler(rng_r);
+
+                        pop[random_patch].juveniles.push_back(offspring);
+                    }
+                    else
+                    {
+                        patch_iter->juveniles.push_back(offspring);
+                    }
+
+                    breeder_iter->w = breeder_iter->w + 1.0;
+                }
             }
-        } // end while true
-
-        for (std::vector<double>::iterator clutch_iter = current_clutch.begin();
-                clutch_iter != current_clutch.end();
-                ++clutch_iter)
-        {
-            // individual survives kin comp
-            if (uniform(rng_r) < size_dependent_survival(*clutch_iter) *
-                    survive_kin_competition(current_clutch.size()))
-            {
-                Individual offspring(*pop_iter);
-                offspring.mutate(parms, rng_r);
-                offspring.size = *clutch_iter;
-                offspring.w = 0;
-                
-                juveniles.push_back(offspring);
-
-                pop_iter->w = pop_iter->w + 1.0;
-            }
-        }
-    } // end for pop_iter
+        } // end for breeder_iter
+    } // end for patch_iter
 
 } // end void Simulation::produce_offspring()
 
@@ -438,9 +500,12 @@ void Simulation::write_parameters()
     data_file << std::endl << std::endl
         << "kin_comp;" << parms.kin_comp << std::endl
         << "kin_comp_power;" << parms.kin_comp_power << std::endl
-        << "N;" << parms.N << std::endl
+        << "Npatches;" << parms.npatches << std::endl
+        << "Npp;" << parms.npp << std::endl
         << "M[0];" << parms.M[0] << std::endl
         << "M[1];" << parms.M[1] << std::endl
+        << "d;" << parms.d << std::endl
+        << "spatially_homogenous;" << parms.spatially_homogenous << std::endl
         << "init_m;" << parms.init_m << std::endl
         << "init_mb;" << parms.init_mb << std::endl
         << "init_bh;" << parms.init_bh << std::endl
