@@ -10,6 +10,7 @@ Simulation::Simulation(Parameters const &params) :
     ,seed{rd()} // which list of random numbers to pick?
     ,rng_r{seed} // initialize the random number generator with a random_device
     ,uniform(0.0,1.0) // initialize a uniform (0,1) distribution
+    ,normal_bh{0,params.sd_bh}
     ,patch_sampler(0, params.npatches - 1) // initialize a uniform (0,1) distribution
     ,parms{params} // initialize parameters
     ,envt{false} // initialize the environment
@@ -141,7 +142,7 @@ void Simulation::write_data()
             {
                 for (int envt_idx = 0; envt_idx < 2; ++envt_idx)
                 {
-                    size = m + mb * envt_idx + bh * normal(rng_r);
+                    size = m + mb * envt_idx + bh * normal_bh(rng_r);
 
                     mean_size[envt_idx] += size;
                     var_size[envt_idx] += size * size;
@@ -429,7 +430,7 @@ void Simulation::produce_offspring()
                     break;
                 }
 
-                resources_per_offspring = m + plast + bh * normal(rng_r);
+                resources_per_offspring = m + plast + bh * normal_bh(rng_r);
 
                 if (resources_per_offspring < 0)
                 {
@@ -509,6 +510,7 @@ void Simulation::write_parameters()
         << "init_m;" << parms.init_m << std::endl
         << "init_mb;" << parms.init_mb << std::endl
         << "init_bh;" << parms.init_bh << std::endl
+        << "sd_bh;" << parms.sd_bh << std::endl
         << "mu_m;" << parms.mu_m << std::endl
         << "mu_bh;" << parms.mu_bh << std::endl
         << "mu_mb;" << parms.mu_mb << std::endl

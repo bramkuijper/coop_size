@@ -21,7 +21,8 @@ int main(int argc, char **argv)
     params.init_m = std::stod(argv[14]);
     params.d = std::stod(argv[15]);
     params.spatially_homogenous = std::stoi(argv[16]);
-    params.base_name = argv[17];
+    params.sd_bh = std::stod(argv[17]);
+    params.base_name = argv[18];
 
     Simulation sim(params);
 
