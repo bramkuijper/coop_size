@@ -45,6 +45,10 @@ struct Parameters
 
     int fixed_clutch_size = 2;
 
+    double a_size = 0.0;
+    double b_size = 1.0;
+    double mid_size = 5.0;
+
     // minimum size that warrants survival
     double mmin = 1.0;
 

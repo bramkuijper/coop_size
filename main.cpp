@@ -20,8 +20,11 @@ int main(int argc, char **argv)
     params.kin_comp = std::stod(argv[13]);
     params.init_m = std::stod(argv[14]);
     params.d = std::stod(argv[15]);
-    params.spatially_homogenous = std::stoi(argv[16]);
-    params.base_name = argv[17];
+    params.a_size = std::stod(argv[16]);
+    params.b_size = std::stod(argv[17]);
+    params.mid_size = std::stod(argv[18]);
+    params.spatially_homogenous = std::stoi(argv[19]);
+    params.base_name = argv[20];
 
     Simulation sim(params);
 

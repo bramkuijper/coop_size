@@ -386,6 +386,7 @@ void Simulation::replace()
 
 void Simulation::produce_offspring()
 {
+    double dispersal_prob; 
     clear_juveniles();
 
     // auxiliary variables
@@ -475,8 +476,12 @@ void Simulation::produce_offspring()
                     offspring.size = *clutch_iter;
                     offspring.w = 0;
 
+                    dispersal_prob = 1.0 / 
+                        (1.0 + exp(parms.a_size - parms.b_size * 
+                                   (offspring.size - parms.mid_size)));
+
                     // see whether offspring disperse or not
-                    if (uniform(rng_r) < parms.d)
+                    if (uniform(rng_r) < dispersal_prob)
                     {
                         int random_patch = patch_sampler(rng_r);
 
@@ -505,6 +510,9 @@ void Simulation::write_parameters()
         << "M[0];" << parms.M[0] << std::endl
         << "M[1];" << parms.M[1] << std::endl
         << "d;" << parms.d << std::endl
+        << "a_size;" << parms.a_size << std::endl
+        << "mid_size;" << parms.mid_size << std::endl
+        << "b_size;" << parms.b_size << std::endl
         << "spatially_homogenous;" << parms.spatially_homogenous << std::endl
         << "init_m;" << parms.init_m << std::endl
         << "init_mb;" << parms.init_mb << std::endl
