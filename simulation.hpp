@@ -18,7 +18,7 @@ class Simulation
 
         std::uniform_real_distribution<double> uniform;
         std::uniform_int_distribution<int> patch_sampler;
-        std::normal_distribution<double> normal;
+        std::normal_distribution<double> normal_bh;
 
         long unsigned time_step;
         std::random_device rd;

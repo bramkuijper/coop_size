@@ -21,6 +21,9 @@ struct Parameters
 
     double sigma[2] = {0.5,0.5};
 
+    // standard deviation of the bet-hedging distribution
+    double sd_bh = 0.1;
+
     // kin competition strength
     double kin_comp = 0.3;
 
