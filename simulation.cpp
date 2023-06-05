@@ -243,7 +243,7 @@ void Simulation::initialize_data_files()
     
     for (int envt_idx = 0; envt_idx < 2; ++envt_idx)
     {
-        data_file << "n_juv_tot_" << envt_idx << ";" << n_juv_disperse << envt_idx << ";";
+        data_file << "n_juv_tot_" << envt_idx << ";" << "n_juv_disperse" << envt_idx << ";";
     }
     
     data_file << std::endl;
