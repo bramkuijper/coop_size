@@ -19,13 +19,12 @@ int main(int argc, char **argv)
     params.fix_clutch_size = std::stoi(argv[12]);
     params.kin_comp = std::stod(argv[13]);
     params.init_m = std::stod(argv[14]);
-    params.d = std::stod(argv[15]);
-    params.a_size = std::stod(argv[16]);
-    params.b_size = std::stod(argv[17]);
-    params.mid_size = std::stod(argv[18]);
-    params.spatially_homogenous = std::stoi(argv[19]);
-    params.sd_bh = std::stod(argv[20]);
-    params.base_name = argv[21];
+    params.a_size = std::stod(argv[15]);
+    params.b_size = std::stod(argv[16]);
+    params.mid_size = std::stod(argv[17]);
+    params.spatially_homogenous = std::stoi(argv[18]);
+    params.sd_bh = std::stod(argv[19]);
+    params.base_name = argv[20];
 
     Simulation sim(params);
 

@@ -28,6 +28,9 @@ class Simulation
         // stats to track # survivors per time step
         unsigned int nsurvive = 0;
 
+        unsigned int n_juv_disperse[2] = {0,0};
+        unsigned int n_juv_tot[2] = {0,0};
+
     public:
         std::vector <Patch> pop;
         std::vector <double> wvec;

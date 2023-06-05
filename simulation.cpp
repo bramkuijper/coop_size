@@ -195,26 +195,26 @@ void Simulation::write_data()
     mean_mb/=total_n;
     mean_bh/=total_n;
 
-
     var_m= var_m/total_n - mean_m * mean_m;
     var_mb= var_mb/total_n - mean_mb * mean_mb;
     var_bh = var_bh/total_n - mean_bh * mean_bh;
 
-    data_file << mean_m << ";";
-    data_file << var_m << ";";
+    data_file << mean_m << ";"
+            << var_m << ";"
+            << mean_mb << ";"
+            << var_mb << ";"
+            << mean_bh << ";"
+            << var_bh << ";"
+            << (double)njuveniles/(parms.npatches * parms.npp) << ";"
+            << (double)nsurvive/(parms.npatches * parms.npp) << ";"
+            << wmean << ";"
+            << varw << ";"
+            << wgeom << ";";
 
-    data_file << mean_mb << ";";
-    data_file << var_mb << ";";
-
-    data_file << mean_bh << ";";
-    data_file << var_bh << ";";
-
-    data_file << (double)njuveniles/(parms.npatches * parms.npp) << ";";
-    data_file << (double)nsurvive/(parms.npatches * parms.npp) << ";";
-
-    data_file << wmean << ";";
-    data_file << varw << ";";
-    data_file << wgeom << ";";
+    for (int envt_idx = 0; envt_idx < 2; ++envt_idx)
+    {
+        data_file << n_juv_tot[envt_idx] << ";" << n_juv_disperse[envt_idx] << ";";
+    }
 
     data_file << std::endl;
 } //end Simulation::write_data()
@@ -239,8 +239,14 @@ void Simulation::initialize_data_files()
     data_file << "mean_bh;";
     data_file << "var_bh;";
 
-    data_file << "juveniles;fraction_adults_survive;meanw;varw;geomw;" << std::endl;
-
+    data_file << "juveniles;fraction_adults_survive;meanw;varw;geomw;"; 
+    
+    for (int envt_idx = 0; envt_idx < 2; ++envt_idx)
+    {
+        data_file << "n_juv_tot_" << envt_idx << ";" << n_juv_disperse << envt_idx << ";";
+    }
+    
+    data_file << std::endl;
 } // end void Simulation::initialize_data_files()
 
 // calculate survival probability based on size
@@ -387,6 +393,12 @@ void Simulation::replace()
 
 void Simulation::produce_offspring()
 {
+    for (int envt_idx = 0; envt_idx < 2; ++envt_idx)
+    {
+        n_juv_disperse[envt_idx] = 0;
+        n_juv_tot[envt_idx] = 0;
+    }
+
     double dispersal_prob; 
     clear_juveniles();
 
@@ -480,11 +492,15 @@ void Simulation::produce_offspring()
                     dispersal_prob = 1.0 / 
                         (1.0 + exp(parms.a_size - parms.b_size * 
                                    (offspring.size - parms.mid_size)));
+                        
+                    ++n_juv_tot[patch_iter->environment_is_bad];
 
                     // see whether offspring disperse or not
                     if (uniform(rng_r) < dispersal_prob)
                     {
                         int random_patch = patch_sampler(rng_r);
+
+                        ++n_juv_disperse[patch_iter->environment_is_bad];
 
                         pop[random_patch].juveniles.push_back(offspring);
                     }
@@ -510,7 +526,6 @@ void Simulation::write_parameters()
         << "Npp;" << parms.npp << std::endl
         << "M[0];" << parms.M[0] << std::endl
         << "M[1];" << parms.M[1] << std::endl
-        << "d;" << parms.d << std::endl
         << "a_size;" << parms.a_size << std::endl
         << "mid_size;" << parms.mid_size << std::endl
         << "b_size;" << parms.b_size << std::endl

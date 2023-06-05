@@ -37,9 +37,6 @@ struct Parameters
     unsigned int npp = 5;
     unsigned int npatches = 5;
 
-    // dispersal probability
-    double d = 0.3;
-
     // parental resources
     double M[2] = {20,50};
 
